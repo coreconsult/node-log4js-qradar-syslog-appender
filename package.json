@@ -1,5 +1,5 @@
 {
-  "name": "log4js-qradar-syslog-appender",
+  "name": "log4js-syslog-tls-appender",
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
@@ -16,7 +16,7 @@
   "dependencies": {},
   "devDependencies": {
     "eslint": "^2.10.0",
-    "log4js-qradar-syslog-appender": "0.4.0",
+    "log4js-syslog-tls-appender": "0.4.0",
     "log4js": "3",
     "tap-spec": "^4.1.1",
     "tape": "^4.5.1"

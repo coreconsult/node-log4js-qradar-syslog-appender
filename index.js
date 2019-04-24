@@ -92,10 +92,13 @@ function loggingFunction(options, log, tries) {
         }
         else { // tcp
             var boundFunction = attemptTcpConnection.bind(this, log, tries);
-            if (mutualAuthConfigured(options)) {
-                configureMutualAuth(options, boundFunction);
-            }
-            else {
+            if (hasCaCert(options)) {
+                if (hasClientCert(options)) {
+                    configureMutualAuth(options, boundFunction);
+                } else {
+                    configureAuthedServer(options, boundFunction);
+                }
+            } else {
                 boundFunction(options);
             }
         }
@@ -128,18 +131,36 @@ function attemptUdpConnection(options, log, tries) {
     logMessage(log, options, tries);
 };
 
-function mutualAuthConfigured(options) {
-    return ( (options.certificateBase64 || options.certificatePath) &&
-        (options.privateKeyBase64 || options.privateKeyPath) &&
-        (options.caBase64 || options.caPath) );
-};
+function hasClientCert(options) {
+    return (
+        (options.certificateBase64 || options.certificatePath) &&
+        (options.privateKeyBase64 || options.privateKeyPath) );
+}
+
+function hasCaCert(options) {
+    return (options.caBase64 || options.caPath);
+}
+
+// we only have a CA cert, so we can make sure the server is legit
+function configureAuthedServer(options, callback) {
+    readBase64StringOrFile(options.caBase64, options.caPath, function(err, caCert) {
+        if (err) {
+            console.error('Error while loading ca key from path: ' + options.caPath + ' Error: ' + util.inspect(err));
+            return;
+        }
+
+        options.caCert = caCert;
+
+        callback(options, true);
+    });
+}
 
 // set up mutual auth.
 function configureMutualAuth(options, callback) {
 
     readBase64StringOrFile(options.certificateBase64, options.certificatePath, function(err, certificate) {
         if (err) {
-            console.error('Error while loading certificate from path: ' + options.certificatePath + ' Error: ' + JSON.stringify(err, null, 2));
+            console.error('Error while loading certificate from path: ' + options.certificatePath + ' Error: ' + util.inspect(err));
             return;
         }
 
@@ -147,7 +168,7 @@ function configureMutualAuth(options, callback) {
 
         readBase64StringOrFile(options.privateKeyBase64, options.privateKeyPath, function(err, key) {
             if (err) {
-                console.error('Error while loading private key from path: ' + options.privateKeyPath + ' Error: ' + JSON.stringify(err, null, 2));
+                console.error('Error while loading private key from path: ' + options.privateKeyPath + ' Error: ' + util.inspect(err));
                 return;
             }
 
@@ -155,7 +176,7 @@ function configureMutualAuth(options, callback) {
 
             readBase64StringOrFile(options.caBase64, options.caPath, function(err, caCert) {
                 if (err) {
-                    console.error('Error while loading ca key from path: ' + options.caPath + ' Error: ' + JSON.stringify(err, null, 2));
+                    console.error('Error while loading ca key from path: ' + options.caPath + ' Error: ' + util.inspect(err));
                     return;
                 }
 
@@ -167,7 +188,7 @@ function configureMutualAuth(options, callback) {
     });
 };
 
-function attemptTcpConnection(log, tries, options, mutualAuth) {
+function attemptTcpConnection(log, tries, options, useTLS) {
     var tlsOptions = {
         cert: options.certificate,
         key: options.key,
@@ -186,7 +207,7 @@ function attemptTcpConnection(log, tries, options, mutualAuth) {
 
     var tcpLib;
     
-    if (mutualAuth) {
+    if (useTLS) {
         tcpLib = tls;
     }
     else {
@@ -211,7 +232,7 @@ function attemptTcpConnection(log, tries, options, mutualAuth) {
 }
 
 function cleanupConnection(err, type) {
-    console.warn('QRadar Syslog appender: connection ' + type + '. Error: ' + JSON.stringify(err, null, 2));
+    console.warn('QRadar Syslog appender: connection ' + type + '. Error: ' + util.inspect(err));
     if (syslogConnectionSingleton.connection) {
         syslogConnectionSingleton.connection.destroy();
         syslogConnectionSingleton.connection = null;
@@ -259,7 +280,10 @@ function appender(config) {
 
     // deep clone of options
     var optionsClone = JSON.parse(JSON.stringify(options));
-    delete optionsClone.privateKeyBase64;
+
+    if (typeof optionsClone.privateKeyBase64 === 'string') {
+        optionsClone.privateKeyBase64 = 'REDACTED string, len: ' + optionsClone.privateKeyBase64.length;
+    }
     internalLog('Syslog appender is enabled with options: ' + JSON.stringify(optionsClone, null, 2));
 
     syslogConnectionSingleton.shutdown = false;

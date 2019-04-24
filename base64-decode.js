@@ -7,7 +7,7 @@
  * Contract with IBM Corp.
  */
 module.exports = function (string) { 
-    var buf = new Buffer(string, "base64"); 
+    var buf = Buffer.from(string, "base64"); 
     return buf.toString(); 
 }
 
