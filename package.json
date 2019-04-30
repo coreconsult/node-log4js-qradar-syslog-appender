@@ -1,6 +1,6 @@
 {
   "name": "@coreconsult/log4js-syslog-tls-appender",
-  "version": "1.0.0",
+  "version": "1.0.2",
   "description": "a TLS capable syslog appender for the log4js NodeJS logging framework",
   "main": "index.js",
   "scripts": {
@@ -11,13 +11,13 @@
   "author": "Herman Singh Badwal <ssjherman@gmail.com>",
   "license": "MIT",
   "peerDependencies": {
-    "log4js": "3"
+    "log4js": "4"
   },
   "dependencies": {},
   "devDependencies": {
-    "eslint": "^2.10.0",
-    "log4js-syslog-tls-appender": "0.4.0",
-    "log4js": "3",
+    "eslint": "^5.16.0",
+    "@coreconsult/log4js-syslog-tls-appender": "1.0.0",
+    "log4js": "^4.0.0",
     "tap-spec": "^4.1.1",
     "tape": "^4.5.1"
   },
@@ -26,7 +26,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/coreconsult/node-log4js-qradar-syslog-appender.git"
+    "url": "git+https://github.com/coreconsult/node-log4js-syslog-tls-appender.git"
   },
   "keywords": [
     "syslog",
@@ -34,7 +34,7 @@
     "log4js"
   ],
   "bugs": {
-    "url": "https://github.com/coreconsult/node-log4js-qradar-syslog-appender/issues"
+    "url": "https://github.com/coreconsult/node-log4js-syslog-tls-appender/issues"
   },
-  "homepage": "https://github.com/coreconsult/node-log4js-qradar-syslog-appender#readme"
+  "homepage": "https://github.com/coreconsult/node-log4js-syslog-tls-appender#readme"
 }
