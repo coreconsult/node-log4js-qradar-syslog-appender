@@ -41,7 +41,7 @@ process.env.log4js_syslog_appender_enabled = true;
 - For production environment (and in source), only push the following in the log4js.json file:
 ```
 {
-        "type": "log4js-qradar-syslog-appender",
+        "type": "@coreconsult/log4js-syslog-tls-appender",
         "options": {}
 }
 ```
