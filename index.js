@@ -25,8 +25,8 @@ module.exports = {
 };
 
 function retryLogic(retryFunction, tries) {
-    // we are in circuit break mode. There is something wrong with the qradar connection. We won't try to
-    // send any log messages to qradar until the circuit is connected again.
+    // we are in circuit break mode. There is something wrong with the syslog connection. We won't try to
+    // send any log messages to the syslog server until the circuit is connected again.
     if (syslogConnectionSingleton.circuitBreak) {
         syslogConnectionSingleton.droppedMessages++;
         return;
@@ -46,9 +46,9 @@ function retryLogic(retryFunction, tries) {
             ' times but the client was not connected. ' + 
             'Initiating circuit breaker protocol. ' + 
             'For the next ' + syslogConnectionSingleton.CIRCUIT_BREAK_MINS + 
-            ' mins, we will not attempt to send any messages to QRadar.');
+            ' mins, we will not attempt to send any messages to syslog.');
         // circuit breaker logic - if detected bad connection, stop trying
-        // to send log messages to qradar for syslogConnectionSingleton.CIRCUIT_BREAK_MINS.
+        // to send log messages to syslog for syslogConnectionSingleton.CIRCUIT_BREAK_MINS.
 
         syslogConnectionSingleton.droppedMessages++;
         setTimeout(connectCircuit.bind(this), 
@@ -77,8 +77,8 @@ function loggingFunction(options, log, tries) {
     if (syslogConnectionSingleton.shutdown) {
         return;
     }
-    // we are in circuit break mode. There is something wrong with the qradar connection. We won't try to
-    // send any log messages to qradar until the circuit is connected again.
+    // we are in circuit break mode. There is something wrong with the syslog connection. We won't try to
+    // send any log messages to syslog until the circuit is connected again.
     if (syslogConnectionSingleton.circuitBreak) {
         syslogConnectionSingleton.droppedMessages++;
         return;
@@ -232,7 +232,7 @@ function attemptTcpConnection(log, tries, options, useTLS) {
 }
 
 function cleanupConnection(err, type) {
-    console.warn('QRadar Syslog appender: connection ' + type + '. Error: ' + util.inspect(err));
+    console.warn('Syslog appender: connection ' + type + '. Error: ' + util.inspect(err));
     if (syslogConnectionSingleton.connection) {
         syslogConnectionSingleton.connection.destroy();
         syslogConnectionSingleton.connection = null;
@@ -293,15 +293,15 @@ function appender(config) {
 
 function connected(message, options, tries) {
     syslogConnectionSingleton.connecting = false;
-    console.warn('QRadar Syslog appender: we have (re)connected to QRadar using a secure connection with ' +
+    console.warn('Syslog appender: we have (re)connected using a secure connection with ' +
         (syslogConnectionSingleton.connection.authorized ? 'a valid ' : 'an INVALID ') +
         'peer certificate. ' + syslogConnectionSingleton.droppedMessages + ' messages have been dropped.');
     logMessage(message, options, tries);
 };
 
 function logMessage(log, options, tries) {
-    // we are in circuit break mode. There is something wrong with the qradar connection. We won't try to
-    // send any log messages to qradar until the circuit is connected again.
+    // we are in circuit break mode. There is something wrong with the syslog connection. We won't try to
+    // send any log messages to syslog until the circuit is connected again.
     if (syslogConnectionSingleton.circuitBreak) {
         syslogConnectionSingleton.droppedMessages++;
         return;
@@ -431,5 +431,5 @@ function shutdown(callback) {
 }
 
 function internalLog(msg) {
-    util.log('QRadar node-log4js-syslog-appender: ' + msg);
+    util.log('log4js-syslog-tls-appender: ' + msg);
 }
