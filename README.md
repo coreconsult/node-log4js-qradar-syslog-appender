@@ -74,16 +74,21 @@ export log4js_syslog_appender_url=tacticalTag
 There are two ways of setting the certs, either through a path (meaning you have to check it into a source control - kind of a nono or by setting the base64 encoded values as env vars - the right way).
 
 ## Option 1: Checking them into source control, then specifying the path to them
+```
 export log4js_syslog_appender_certificatePath=keys/IDS-crt.pem
 export log4js_syslog_appender_privateKeyPath=keys/IDS-key.pem
 export log4js_syslog_appender_caPath=keys/ca.pem
+```
 
 ## Option 2: A more secure way is actually setting the cert itself as env vars.
 Note: To shorten the length, we use the base64 encoded values of the certs.
+```
 export log4js_syslog_appender_certificateBase64=LS0tLS1CRUdJTiBDRVJUSUZJQ....
 export log4js_syslog_appender_privateKeyBase64=LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0t...
 export log4js_syslog_appender_caBase64=LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0t...
+```
 
 ## Allow connections to servers with self signed certs.  By default, these connections will fail.
+```
 export log4js_syslog_appender_rejectUnauthorized=false
 ```
