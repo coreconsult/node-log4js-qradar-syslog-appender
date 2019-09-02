@@ -1,6 +1,6 @@
 {
   "name": "@coreconsult/log4js-syslog-tls-appender",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "a TLS capable syslog appender for the log4js NodeJS logging framework",
   "main": "index.js",
   "scripts": {
@@ -15,10 +15,12 @@
   },
   "dependencies": {},
   "devDependencies": {
-    "eslint": "^5.16.0",
-    "@coreconsult/log4js-syslog-tls-appender": "1.0.0",
-    "log4js": "^4.0.0",
-    "tap-spec": "^4.1.1",
+    "eslint": "^6.3.0",
+    "eslint-config-prettier": "^6.0.0",
+    "eslint-plugin-prettier": "^3.1.0",
+    "prettier": "^1.18.2",
+    "log4js": "^5.0.0",
+    "tap-spec": "^5.0.0",
     "tape": "^4.5.1"
   },
   "directories": {
