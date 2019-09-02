@@ -6,22 +6,23 @@
  * Use, duplication or disclosure restricted by GSA ADP Schedule
  * Contract with IBM Corp.
  */
-/*eslint-env node */
-"use strict";
+/* eslint-env node */
 
-var syslogConnectionSingleton = require("./syslog-connection-singleton"),
-  base64Decode = require("./base64-decode"),
-  tls = require("tls"),
-  fs = require("fs"),
-  util = require("util"),
-  os = require("os"),
-  dgram = require("dgram"),
-  net = require("net");
+
+
+const tls = require("tls");
+const fs = require("fs");
+const util = require("util");
+const os = require("os");
+const dgram = require("dgram");
+const net = require("net");
+const base64Decode = require("./base64-decode");
+const syslogConnectionSingleton = require("./syslog-connection-singleton");
 
 module.exports = {
-  appender: appender,
-  configure: configure,
-  shutdown: shutdown
+  appender,
+  configure,
+  shutdown
 };
 
 function retryLogic(retryFunction, tries) {
@@ -42,13 +43,13 @@ function retryLogic(retryFunction, tries) {
   if (tries > syslogConnectionSingleton.MAX_TRIES) {
     syslogConnectionSingleton.circuitBreak = true;
     internalLog(
-      "Tried sending a message " +
-        syslogConnectionSingleton.MAX_TRIES +
-        " times but the client was not connected. " +
-        "Initiating circuit breaker protocol. " +
-        "For the next " +
-        syslogConnectionSingleton.CIRCUIT_BREAK_MINS +
-        " mins, we will not attempt to send any messages to syslog."
+      `Tried sending a message ${ 
+        syslogConnectionSingleton.MAX_TRIES 
+      } times but the client was not connected. ` +
+        `Initiating circuit breaker protocol. ` +
+        `For the next ${ 
+          syslogConnectionSingleton.CIRCUIT_BREAK_MINS 
+        } mins, we will not attempt to send any messages to syslog.`
     );
     // circuit breaker logic - if detected bad connection, stop trying
     // to send log messages to syslog for syslogConnectionSingleton.CIRCUIT_BREAK_MINS.
@@ -61,14 +62,14 @@ function retryLogic(retryFunction, tries) {
     return;
   }
   setTimeout(retryFunction.bind(this, tries), 100);
-  return;
+  
 }
 
 function connectCircuit() {
   internalLog(
-    "Re-connecting the circuit. So far we have dropped " +
-      syslogConnectionSingleton.droppedMessages +
-      " messages."
+    `Re-connecting the circuit. So far we have dropped ${ 
+      syslogConnectionSingleton.droppedMessages 
+    } messages.`
   );
   syslogConnectionSingleton.circuitBreak = false;
 }
@@ -102,7 +103,7 @@ function loggingFunction(options, log, tries) {
       attemptUdpConnection(options, log, tries);
     } else {
       // tcp
-      var boundFunction = attemptTcpConnection.bind(this, log, tries);
+      const boundFunction = attemptTcpConnection.bind(this, log, tries);
       if (hasCaCert(options)) {
         if (hasClientCert(options)) {
           configureMutualAuth(options, boundFunction);
@@ -119,9 +120,9 @@ function loggingFunction(options, log, tries) {
 }
 
 function attemptUdpConnection(options, log, tries) {
-  var client = dgram.createSocket("udp4");
+  const client = dgram.createSocket("udp4");
   syslogConnectionSingleton.connection = {
-    write: function(msg) {
+    write(msg) {
       client.send(msg, 0, msg.length, options.port, options.host, function(
         err
       ) {
@@ -131,7 +132,7 @@ function attemptUdpConnection(options, log, tries) {
         }
       });
     },
-    destroy: function() {
+    destroy() {
       client.close();
     }
   };
@@ -162,10 +163,10 @@ function configureAuthedServer(options, callback) {
   ) {
     if (err) {
       console.error(
-        "Error while loading ca key from path: " +
-          options.caPath +
-          " Error: " +
-          util.inspect(err)
+        `Error while loading ca key from path: ${ 
+          options.caPath 
+        } Error: ${ 
+          util.inspect(err)}`
       );
       return;
     }
@@ -184,10 +185,10 @@ function configureMutualAuth(options, callback) {
     function(err, certificate) {
       if (err) {
         console.error(
-          "Error while loading certificate from path: " +
-            options.certificatePath +
-            " Error: " +
-            util.inspect(err)
+          `Error while loading certificate from path: ${ 
+            options.certificatePath 
+          } Error: ${ 
+            util.inspect(err)}`
         );
         return;
       }
@@ -200,10 +201,10 @@ function configureMutualAuth(options, callback) {
         function(err, key) {
           if (err) {
             console.error(
-              "Error while loading private key from path: " +
-                options.privateKeyPath +
-                " Error: " +
-                util.inspect(err)
+              `Error while loading private key from path: ${ 
+                options.privateKeyPath 
+              } Error: ${ 
+                util.inspect(err)}`
             );
             return;
           }
@@ -216,10 +217,10 @@ function configureMutualAuth(options, callback) {
           ) {
             if (err) {
               console.error(
-                "Error while loading ca key from path: " +
-                  options.caPath +
-                  " Error: " +
-                  util.inspect(err)
+                `Error while loading ca key from path: ${ 
+                  options.caPath 
+                } Error: ${ 
+                  util.inspect(err)}`
               );
               return;
             }
@@ -235,7 +236,7 @@ function configureMutualAuth(options, callback) {
 }
 
 function attemptTcpConnection(log, tries, options, useTLS) {
-  var tlsOptions = {
+  const tlsOptions = {
     cert: options.certificate,
     key: options.key,
     ca: options.caCert,
@@ -251,7 +252,7 @@ function attemptTcpConnection(log, tries, options, useTLS) {
     rejectUnauthorized: options.rejectUnauthorized
   };
 
-  var tcpLib;
+  let tcpLib;
 
   if (useTLS) {
     tcpLib = tls;
@@ -281,7 +282,7 @@ function attemptTcpConnection(log, tries, options, useTLS) {
 
 function cleanupConnection(err, type) {
   console.warn(
-    "Syslog appender: connection " + type + ". Error: " + util.inspect(err)
+    `Syslog appender: connection ${  type  }. Error: ${  util.inspect(err)}`
   );
   if (syslogConnectionSingleton.connection) {
     syslogConnectionSingleton.connection.destroy();
@@ -291,7 +292,7 @@ function cleanupConnection(err, type) {
 }
 
 function appender(config) {
-  var options = {
+  const options = {
     host:
       process.env.log4js_syslog_appender_host ||
       (config.options && config.options.host),
@@ -359,8 +360,8 @@ function appender(config) {
       ""
   };
 
-  var stripOut = ["https://", "http://"];
-  for (var i = 0; i < stripOut.length; i++) {
+  const stripOut = ["https://", "http://"];
+  for (let i = 0; i < stripOut.length; i++) {
     if (options.url.startsWith(stripOut[i])) {
       options.url = options.url.slice(stripOut[i].length);
     }
@@ -375,15 +376,15 @@ function appender(config) {
   }
 
   // deep clone of options
-  var optionsClone = JSON.parse(JSON.stringify(options));
+  const optionsClone = JSON.parse(JSON.stringify(options));
 
   if (typeof optionsClone.privateKeyBase64 === "string") {
     optionsClone.privateKeyBase64 =
-      "REDACTED string, len: " + optionsClone.privateKeyBase64.length;
+      `REDACTED string, len: ${  optionsClone.privateKeyBase64.length}`;
   }
   internalLog(
-    "Syslog appender is enabled with options: " +
-      JSON.stringify(optionsClone, null, 2)
+    `Syslog appender is enabled with options: ${ 
+      JSON.stringify(optionsClone, null, 2)}`
   );
 
   syslogConnectionSingleton.shutdown = false;
@@ -394,13 +395,13 @@ function appender(config) {
 function connected(message, options, tries) {
   syslogConnectionSingleton.connecting = false;
   console.warn(
-    "Syslog appender: we have (re)connected using a secure connection with " +
-      (syslogConnectionSingleton.connection.authorized
+    `Syslog appender: we have (re)connected using a secure connection with ${ 
+      syslogConnectionSingleton.connection.authorized
         ? "a valid "
-        : "an INVALID ") +
-      "peer certificate. " +
-      syslogConnectionSingleton.droppedMessages +
-      " messages have been dropped."
+        : "an INVALID " 
+    }peer certificate. ${ 
+      syslogConnectionSingleton.droppedMessages 
+    } messages have been dropped.`
   );
   logMessage(message, options, tries);
 }
@@ -423,11 +424,11 @@ function logMessage(log, options, tries) {
   }
 
   // if theres a whitelist then only send those messages
-  var logWhitelist = process.env.log4js_syslog_appender_whitelist;
-  var categoriesToSend = logWhitelist && logWhitelist.split(",");
+  const logWhitelist = process.env.log4js_syslog_appender_whitelist;
+  const categoriesToSend = logWhitelist && logWhitelist.split(",");
   if (logWhitelist && categoriesToSend.indexOf(log.categoryName) === -1) return;
 
-  var formattedMessage = formatMessage(
+  const formattedMessage = formatMessage(
     log.data.join(" | "),
     log.level && log.level.levelStr,
     options
@@ -437,7 +438,7 @@ function logMessage(log, options, tries) {
 }
 
 function levelToSeverity(levelStr) {
-  var levels = ["FATAL", "ERROR", "WARN", "INFO", "DEBUG", "TRACE"];
+  const levels = ["FATAL", "ERROR", "WARN", "INFO", "DEBUG", "TRACE"];
 
   return levels.indexOf(levelStr) !== -1 ? levels.indexOf(levelStr) + 1 : 4;
 }
@@ -464,37 +465,37 @@ function formatMessage(message, levelStr, options) {
 function configure(config) {
   if (process.env.log4js_syslog_appender_enabled !== "true") {
     return function() {};
-  } else {
-    return appender(config);
-  }
+  } 
+  return appender(config);
+  
 }
 
 function parseToBoolean(val, defaultValue) {
   if (defaultValue) {
     // default is true
     return val !== "false" && val !== false;
-  } else {
-    // default is false
-    return val === "true" || val === true;
-  }
+  } 
+  // default is false
+  return val === "true" || val === true;
+  
 }
 
 function verifyOptions(options) {
-  var requiredOptions = [
+  const requiredOptions = [
     "log4js_syslog_appender_host",
     "log4js_syslog_appender_port",
     "log4js_syslog_appender_product"
   ];
-  var valid = true;
+  let valid = true;
 
   requiredOptions.forEach(function(option) {
-    var key = option.substring(option.lastIndexOf("_") + 1);
+    const key = option.substring(option.lastIndexOf("_") + 1);
     if (!options[key]) {
       internalLog(
-        key +
-          " is a required option. It is settable with the " +
-          option +
-          " environment variable."
+        `${key 
+        } is a required option. It is settable with the ${ 
+          option 
+        } environment variable.`
       );
       valid = false; // array.forEach is blocking
     }
@@ -505,49 +506,49 @@ function verifyOptions(options) {
     "log4js_syslog_appender_privateKey",
     "log4js_syslog_appender_ca"
   ].forEach(function(option) {
-    var key = option.split("_").pop();
+    const key = option.split("_").pop();
 
     if (
-      !options[key + "Path"] &&
-      !options[key + "Base64"] &&
+      !options[`${key  }Path`] &&
+      !options[`${key  }Base64`] &&
       !options.useUdpSyslog
     ) {
       internalLog(
-        "In order to enable " +
-          "mutual auth, either " +
-          key +
-          "Path or " +
-          key +
-          "Base64 are required options. It is settable with the " +
-          option +
-          " environment variable."
+        `${"In order to enable " +
+          "mutual auth, either "}${ 
+          key 
+        }Path or ${ 
+          key 
+        }Base64 are required options. It is settable with the ${ 
+          option 
+        } environment variable.`
       );
     }
 
     // Deprecated warnings.
-    if (options[key + "Path"]) {
+    if (options[`${key  }Path`]) {
       if (options.useUdpSyslog) {
         internalLog(
-          "WARNING env var " +
-            key +
-            "Path will not be used for unencrypted syslog UDP/514."
+          `WARNING env var ${ 
+            key 
+          }Path will not be used for unencrypted syslog UDP/514.`
         );
       } else {
         internalLog(
-          "WARNING env var " +
-            key +
-            "Path is now deprecated and will be removed in a future" +
-            " release. Please switch to " +
-            key +
-            "Base64 instead."
+          `WARNING env var ${ 
+            key 
+          }Path is now deprecated and will be removed in a future` +
+            ` release. Please switch to ${ 
+              key 
+            }Base64 instead.`
         );
       }
     }
-    if (options[key + "Base64"] && options.useUdpSyslog) {
+    if (options[`${key  }Base64`] && options.useUdpSyslog) {
       internalLog(
-        "WARNING env var " +
-          key +
-          "Base64 will not be used for unencrypted syslog UDP/514."
+        `WARNING env var ${ 
+          key 
+        }Base64 will not be used for unencrypted syslog UDP/514.`
       );
     }
   });
@@ -562,5 +563,5 @@ function shutdown(callback) {
 }
 
 function internalLog(msg) {
-  util.log("log4js-syslog-tls-appender: " + msg);
+  util.log(`log4js-syslog-tls-appender: ${  msg}`);
 }
