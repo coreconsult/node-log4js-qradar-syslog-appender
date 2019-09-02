@@ -6,26 +6,26 @@
  * Use, duplication or disclosure restricted by GSA ADP Schedule
  * Contract with IBM Corp.
  */
-'use strict';
+"use strict";
 
 // internal constructor only
 var singleton = function() {
-    return {
-        connection : null,
-        droppedMessages: 0,
-        circuitBreak: false,
-        MAX_TRIES: 3,
-        CIRCUIT_BREAK_MINS: 10
-    };
+  return {
+    connection: null,
+    droppedMessages: 0,
+    circuitBreak: false,
+    MAX_TRIES: 3,
+    CIRCUIT_BREAK_MINS: 10
+  };
 };
 
 // returns the current instance if it exists
 // otherwise creates a new one.
 singleton.getInstance = function() {
-    if (!this.instance) {
-        this.instance = new singleton();
-    }
-    return this.instance;
+  if (!this.instance) {
+    this.instance = new singleton();
+  }
+  return this.instance;
 };
 
 // only expose a function that returns the current instance if it exists
