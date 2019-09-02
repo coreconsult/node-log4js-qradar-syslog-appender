@@ -1,9 +1,9 @@
 language: node_js
 node_js:
-  - "6"
+  - "12"
 env:
   - TESTCOMMAND=test
   - TESTCOMMAND=test:unit
   - TESTCOMMAND=test:system
 script:
-  - npm run $TESTCOMMAND 
+  - npm run $TESTCOMMAND
