@@ -8,18 +8,16 @@
  */
 /* eslint-env node */
 
+import tls from "tls";
+import { readFile } from "fs";
+import { inspect, format, log as _log } from "util";
+import { hostname } from "os";
+import { createSocket } from "dgram";
+import net from "net";
+import base64Decode from "./base64-decode";
+import { circuitBreak, droppedMessages, MAX_TRIES, CIRCUIT_BREAK_MINS, shutdown as _shutdown, connection, connecting } from "./syslog-connection-singleton";
 
-
-const tls = require("tls");
-const fs = require("fs");
-const util = require("util");
-const os = require("os");
-const dgram = require("dgram");
-const net = require("net");
-const base64Decode = require("./base64-decode");
-const syslogConnectionSingleton = require("./syslog-connection-singleton");
-
-module.exports = {
+export default {
   appender,
   configure,
   shutdown
@@ -28,8 +26,8 @@ module.exports = {
 function retryLogic(retryFunction, tries) {
   // we are in circuit break mode. There is something wrong with the syslog connection. We won't try to
   // send any log messages to the syslog server until the circuit is connected again.
-  if (syslogConnectionSingleton.circuitBreak) {
-    syslogConnectionSingleton.droppedMessages++;
+  if (circuitBreak) {
+    droppedMessages++;
     return;
   }
 
@@ -40,24 +38,24 @@ function retryLogic(retryFunction, tries) {
     tries++;
   }
 
-  if (tries > syslogConnectionSingleton.MAX_TRIES) {
-    syslogConnectionSingleton.circuitBreak = true;
+  if (tries > MAX_TRIES) {
+    circuitBreak = true;
     internalLog(
       `Tried sending a message ${ 
-        syslogConnectionSingleton.MAX_TRIES 
+        MAX_TRIES 
       } times but the client was not connected. ` +
         `Initiating circuit breaker protocol. ` +
         `For the next ${ 
-          syslogConnectionSingleton.CIRCUIT_BREAK_MINS 
+          CIRCUIT_BREAK_MINS 
         } mins, we will not attempt to send any messages to syslog.`
     );
     // circuit breaker logic - if detected bad connection, stop trying
     // to send log messages to syslog for syslogConnectionSingleton.CIRCUIT_BREAK_MINS.
 
-    syslogConnectionSingleton.droppedMessages++;
+    droppedMessages++;
     setTimeout(
       connectCircuit.bind(this),
-      syslogConnectionSingleton.CIRCUIT_BREAK_MINS * 60 * 1000
+      CIRCUIT_BREAK_MINS * 60 * 1000
     );
     return;
   }
@@ -68,36 +66,36 @@ function retryLogic(retryFunction, tries) {
 function connectCircuit() {
   internalLog(
     `Re-connecting the circuit. So far we have dropped ${ 
-      syslogConnectionSingleton.droppedMessages 
+      droppedMessages 
     } messages.`
   );
-  syslogConnectionSingleton.circuitBreak = false;
+  circuitBreak = false;
 }
 
 function readBase64StringOrFile(base64, file, callback) {
   if (base64) {
     callback(null, base64Decode(base64));
   } else {
-    fs.readFile(file, { encoding: "utf8" }, callback);
+    readFile(file, { encoding: "utf8" }, callback);
   }
 }
 
 function loggingFunction(options, log, tries) {
-  if (syslogConnectionSingleton.shutdown) {
+  if (_shutdown) {
     return;
   }
   // we are in circuit break mode. There is something wrong with the syslog connection. We won't try to
   // send any log messages to syslog until the circuit is connected again.
-  if (syslogConnectionSingleton.circuitBreak) {
-    syslogConnectionSingleton.droppedMessages++;
+  if (circuitBreak) {
+    droppedMessages++;
     return;
   }
 
   if (
-    !syslogConnectionSingleton.connection &&
-    !syslogConnectionSingleton.connecting
+    !connection &&
+    !connecting
   ) {
-    syslogConnectionSingleton.connecting = true;
+    connecting = true;
     // udp
     if (options.useUdpSyslog) {
       attemptUdpConnection(options, log, tries);
@@ -120,8 +118,8 @@ function loggingFunction(options, log, tries) {
 }
 
 function attemptUdpConnection(options, log, tries) {
-  const client = dgram.createSocket("udp4");
-  syslogConnectionSingleton.connection = {
+  const client = createSocket("udp4");
+  connection = {
     write(msg) {
       client.send(msg, 0, msg.length, options.port, options.host, function(
         err
@@ -140,7 +138,7 @@ function attemptUdpConnection(options, log, tries) {
     cleanupConnection(err, "error");
     retryLogic(loggingFunction.bind(this, options, log), tries);
   });
-  syslogConnectionSingleton.connecting = false;
+  connecting = false;
   logMessage(log, options, tries);
 }
 
@@ -166,7 +164,7 @@ function configureAuthedServer(options, callback) {
         `Error while loading ca key from path: ${ 
           options.caPath 
         } Error: ${ 
-          util.inspect(err)}`
+          inspect(err)}`
       );
       return;
     }
@@ -188,7 +186,7 @@ function configureMutualAuth(options, callback) {
           `Error while loading certificate from path: ${ 
             options.certificatePath 
           } Error: ${ 
-            util.inspect(err)}`
+            inspect(err)}`
         );
         return;
       }
@@ -204,7 +202,7 @@ function configureMutualAuth(options, callback) {
               `Error while loading private key from path: ${ 
                 options.privateKeyPath 
               } Error: ${ 
-                util.inspect(err)}`
+                inspect(err)}`
             );
             return;
           }
@@ -220,7 +218,7 @@ function configureMutualAuth(options, callback) {
                 `Error while loading ca key from path: ${ 
                   options.caPath 
                 } Error: ${ 
-                  util.inspect(err)}`
+                  inspect(err)}`
               );
               return;
             }
@@ -260,21 +258,21 @@ function attemptTcpConnection(log, tries, options, useTLS) {
     tcpLib = net;
   }
 
-  syslogConnectionSingleton.connection = tcpLib.connect(
+  connection = tcpLib.connect(
     tlsOptions,
     connected.bind(this, log, options, tries)
   );
 
-  syslogConnectionSingleton.connection.setEncoding("utf8");
-  syslogConnectionSingleton.connection.on("error", function(err) {
+  connection.setEncoding("utf8");
+  connection.on("error", function(err) {
     cleanupConnection(err, "error");
     retryLogic(loggingFunction.bind(this, options, log), tries);
   });
-  syslogConnectionSingleton.connection.on("close", function(err) {
+  connection.on("close", function(err) {
     cleanupConnection(err, "closed");
     retryLogic(loggingFunction.bind(this, options, log), tries);
   });
-  syslogConnectionSingleton.connection.on("end", function(err) {
+  connection.on("end", function(err) {
     cleanupConnection(err, "ended");
     retryLogic(loggingFunction.bind(this, options, log), tries);
   });
@@ -282,13 +280,13 @@ function attemptTcpConnection(log, tries, options, useTLS) {
 
 function cleanupConnection(err, type) {
   console.warn(
-    `Syslog appender: connection ${  type  }. Error: ${  util.inspect(err)}`
+    `Syslog appender: connection ${  type  }. Error: ${  inspect(err)}`
   );
-  if (syslogConnectionSingleton.connection) {
-    syslogConnectionSingleton.connection.destroy();
-    syslogConnectionSingleton.connection = null;
+  if (connection) {
+    connection.destroy();
+    connection = null;
   }
-  syslogConnectionSingleton.connecting = false;
+  connecting = false;
 }
 
 function appender(config) {
@@ -356,7 +354,7 @@ function appender(config) {
       process.env.log4js_syslog_appender_url ||
       (config.options && config.options.url) ||
       process.env.url ||
-      os.hostname() ||
+      hostname() ||
       ""
   };
 
@@ -387,20 +385,20 @@ function appender(config) {
       JSON.stringify(optionsClone, null, 2)}`
   );
 
-  syslogConnectionSingleton.shutdown = false;
+  _shutdown = false;
 
   return loggingFunction.bind(this, options);
 }
 
 function connected(message, options, tries) {
-  syslogConnectionSingleton.connecting = false;
+  connecting = false;
   console.warn(
     `Syslog appender: we have (re)connected using a secure connection with ${ 
-      syslogConnectionSingleton.connection.authorized
+      connection.authorized
         ? "a valid "
         : "an INVALID " 
     }peer certificate. ${ 
-      syslogConnectionSingleton.droppedMessages 
+      droppedMessages 
     } messages have been dropped.`
   );
   logMessage(message, options, tries);
@@ -409,16 +407,16 @@ function connected(message, options, tries) {
 function logMessage(log, options, tries) {
   // we are in circuit break mode. There is something wrong with the syslog connection. We won't try to
   // send any log messages to syslog until the circuit is connected again.
-  if (syslogConnectionSingleton.circuitBreak) {
-    syslogConnectionSingleton.droppedMessages++;
+  if (circuitBreak) {
+    droppedMessages++;
     return;
   }
 
   // we got disconnected or are still connecting
   // retry later when we are hopefully (re)connected
   if (
-    !syslogConnectionSingleton.connection ||
-    syslogConnectionSingleton.connecting
+    !connection ||
+    connecting
   ) {
     return retryLogic(loggingFunction.bind(this, options, log), tries);
   }
@@ -434,7 +432,7 @@ function logMessage(log, options, tries) {
     options
   );
 
-  syslogConnectionSingleton.connection.write(formattedMessage);
+  connection.write(formattedMessage);
 }
 
 function levelToSeverity(levelStr) {
@@ -448,7 +446,7 @@ function formatMessage(message, levelStr, options) {
   // HEADER STRUCTURED_DATA MESSAGE
   // where HEADER = <PRI>VERSION TIMESTAMP HOSTNAME APP-NAME PROCID MSGID
   // for details see the RFC here http://tools.ietf.org/html/rfc5424# .
-  return util.format(
+  return format(
     "<%d>%d %s %s %s %d %s %s %s\n",
     16 * 8 + levelToSeverity(levelStr), // hardcoded facility of local0 which translates to 16 according to RFC. TODO: use passed in facility.
     1,
@@ -557,11 +555,11 @@ function verifyOptions(options) {
 }
 
 function shutdown(callback) {
-  syslogConnectionSingleton.shutdown = true;
+  _shutdown = true;
   cleanupConnection("log4js is shutting down", "shutting down");
   callback();
 }
 
 function internalLog(msg) {
-  util.log(`log4js-syslog-tls-appender: ${  msg}`);
+  _log(`log4js-syslog-tls-appender: ${  msg}`);
 }
