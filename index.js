@@ -8,23 +8,27 @@
  */
 /* eslint-env node */
 
-import tls from "tls";
-import { inspect, format, log as _log } from "util";
-import { hostname } from "os";
-import { createSocket } from "dgram";
-import net from "net";
-import * as Singleton from "./syslog-connection-singleton";
-import {
-  hasCaCert,
-  hasClientCert,
-  configureMutualAuth,
-  configureAuthedServer
-} from "./cert-handling";
+/* can't use ES modules, as log4js require()s this file,
+   and only files that are import()-ed can use import themselves
+*/
+
+const tls = require("tls");
+const util = require("util");
+/* eslint-disable prefer-destructuring */
+const createSocket = require("dgram").createSocket;
+const hostname = require("os").hostname;
+/* eslint-enable prefer-destructuring */
+
+
+const net = require("net");
+const certHandling = require("./cert-handling");
+const Singleton = require("./syslog-connection-singleton");
 
 const state = new Singleton();
 
+
 function internalLog(msg) {
-  _log(`log4js-syslog-tls-appender: ${msg}`);
+  util.log(`log4js-syslog-tls-appender: ${msg}`);
 }
 
 function levelToSeverity(levelStr) {
@@ -38,7 +42,7 @@ function formatMessage(message, levelStr, options) {
   // HEADER STRUCTURED_DATA MESSAGE
   // where HEADER = <PRI>VERSION TIMESTAMP HOSTNAME APP-NAME PROCID MSGID
   // for details see the RFC here http://tools.ietf.org/html/rfc5424# .
-  return format(
+  return util.format(
     "<%d>%d %s %s %s %d %s %s %s\n",
     16 * 8 +
       levelToSeverity(
@@ -64,7 +68,7 @@ function connectCircuit() {
 }
 
 function cleanupConnection(err, type) {
-  console.warn(`Syslog appender: connection ${type}. Error: ${inspect(err)}`);
+  console.warn(`Syslog appender: connection ${type}. Error: ${util.inspect(err)}`);
   if (state.connection) {
     state.connection.destroy();
     state.connection = null;
@@ -161,11 +165,11 @@ function loggingFunction(options, log, tries) {
       // tcp
       /* eslint-disable-next-line no-use-before-define */
       const boundFunction = attemptTcpConnection.bind(this, log, tries);
-      if (hasCaCert(options)) {
-        if (hasClientCert(options)) {
-          configureMutualAuth(options, boundFunction);
+      if (certHandling.hasCaCert(options)) {
+        if (certHandling.hasClientCert(options)) {
+          certHandling.configureMutualAuth(options, boundFunction);
         } else {
-          configureAuthedServer(options, boundFunction);
+          certHandling.configureAuthedServer(options, boundFunction);
         }
       } else {
         boundFunction(options);
@@ -241,16 +245,16 @@ function attemptTcpConnection(log, tries, options, useTLS) {
     connected.bind(this, log, options, tries)
   );
 
-  state.connectionsetEncoding("utf8");
-  state.connectionon("error", function(err) {
+  state.connection.setEncoding("utf8");
+  state.connection.on("error", function(err) {
     cleanupConnection(err, "error");
     retryLogic(loggingFunction.bind(this, options, log), tries);
   });
-  state.connectionon("close", function(err) {
+  state.connection.on("close", function(err) {
     cleanupConnection(err, "closed");
     retryLogic(loggingFunction.bind(this, options, log), tries);
   });
-  state.connectionon("end", function(err) {
+  state.connection.on("end", function(err) {
     cleanupConnection(err, "ended");
     retryLogic(loggingFunction.bind(this, options, log), tries);
   });
@@ -434,7 +438,7 @@ function configure(config) {
   return appender(config);
 }
 
-export default {
+module.exports = {
   appender,
   configure,
   shutdown

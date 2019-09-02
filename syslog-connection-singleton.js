@@ -7,7 +7,7 @@
  * Contract with IBM Corp.
  */
 
-export default class Singleton {
+module.exports = class Singleton {
   constructor() {
     if (Singleton.instance) {
       return Singleton.instance;

@@ -6,7 +6,7 @@
  * Use, duplication or disclosure restricted by GSA ADP Schedule
  * Contract with IBM Corp.
  */
-export default function(string) {
+module.exports = function(string) {
   const buf = Buffer.from(string, "base64");
   return buf.toString();
 }

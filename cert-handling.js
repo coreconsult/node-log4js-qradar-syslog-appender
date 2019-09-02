@@ -1,27 +1,29 @@
-import { inspect } from "util";
-import { readFile } from "fs";
+/* eslint-disable-next-line prefer-destructuring */
+const inspect = require("util").inspect;
+const fs = require("fs");
 
-import base64Decode from "./base64-decode";
+const base64Decode = require("./base64-decode");
 
-export function readBase64StringOrFile(base64, file, callback) {
+
+function readBase64StringOrFile(base64, file, callback) {
   if (base64) {
     callback(null, base64Decode(base64));
   } else {
-    readFile(file, { encoding: "utf8" }, callback);
+    fs.readFile(file, { encoding: "utf8" }, callback);
   }
 }
 
-export function hasClientCert(options) {
+function hasClientCert(options) {
   return (
     (options.certificateBase64 || options.certificatePath) &&
     (options.privateKeyBase64 || options.privateKeyPath)
   );
 }
-export function hasCaCert(options) {
+function hasCaCert(options) {
   return options.caBase64 || options.caPath;
 }
 // we only have a CA cert, so we can make sure the server is legit
-export function configureAuthedServer(options, callback) {
+function configureAuthedServer(options, callback) {
   readBase64StringOrFile(options.caBase64, options.caPath, function(
     err,
     caCert
@@ -39,7 +41,7 @@ export function configureAuthedServer(options, callback) {
   });
 }
 // set up mutual auth.
-export function configureMutualAuth(options, callback) {
+function configureMutualAuth(options, callback) {
   readBase64StringOrFile(
     options.certificateBase64,
     options.certificatePath,
@@ -85,4 +87,12 @@ export function configureMutualAuth(options, callback) {
       );
     }
   );
+}
+
+module.exports = {
+  readBase64StringOrFile,
+  hasClientCert,
+  configureMutualAuth,
+  hasCaCert,
+  configureAuthedServer
 }

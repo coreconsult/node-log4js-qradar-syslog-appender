@@ -44,7 +44,7 @@ test('Test message received by udp server', function(t) {
     log4js.configure({
       appenders: {
         qradar: {
-          type: 'log4js-qradar-syslog-appender',
+          type: '@coreconsult/log4js-syslog-tls-appender',
           options: {
             host: 'localhost',
             port: '1514',

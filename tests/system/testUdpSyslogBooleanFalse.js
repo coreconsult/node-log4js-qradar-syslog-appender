@@ -43,10 +43,10 @@ test('Test boolean useUdpSyslog=false uses Tcp', function(t) {
     }
     console.log('server bound on port 1514');
 
-    log4js.configure({ 
+    log4js.configure({
       appenders: {
         qradar: {
-          type: 'log4js-qradar-syslog-appender',
+          type: '@coreconsult/log4js-syslog-tls-appender',
           options: {
             host: 'localhost',
             port: '1514',
