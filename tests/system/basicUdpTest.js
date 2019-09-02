@@ -19,12 +19,12 @@ test('Test message received by udp server', function(t) {
   const server = dgram.createSocket('udp4');
 
   server.on('error', function(err) {
-    console.log('server error:\n${err.stack}');
+    console.log(`server error:\n${err.stack}`);
     server.close();
   });
 
   server.on('message', function(msg, rinfo) {
-    console.log(`received message: ${  msg.toString()}`);
+    console.log(`received message: ${msg.toString()}, ${rinfo}`);
     t.ok(msg, 'did the message get received over udp?');
     t.end();
     process.exit(0);
@@ -32,7 +32,7 @@ test('Test message received by udp server', function(t) {
 
   server.on('listening', function() {
     const address = server.address();
-    console.log('server listening on port 1514');
+    console.log(`server listening on port 1514, address: ${address}`);
   });
 
   server.bind(1514, function(err) {
@@ -41,7 +41,7 @@ test('Test message received by udp server', function(t) {
       throw err;
     }
 
-    log4js.configure({ 
+    log4js.configure({
       appenders: {
         qradar: {
           type: 'log4js-qradar-syslog-appender',
