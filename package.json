@@ -1,5 +1,4 @@
 {
-  "type": "module",
   "name": "@coreconsult/log4js-syslog-tls-appender",
   "version": "1.2.0",
   "description": "a TLS capable syslog appender for the log4js NodeJS logging framework",
